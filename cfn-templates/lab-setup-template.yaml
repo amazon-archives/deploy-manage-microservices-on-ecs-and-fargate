@@ -1,0 +1,621 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Provision AWS resources required for ECS Workshop - Contacts Management Demo Application
+
+Parameters:
+  SshKeyName:
+    Description: SSH Key Name for Container Instance
+    Type: String
+  CognitoUserPoolName:
+    Description: Name of the Cognito User Pool
+    Type: String
+    Default: ecs-workshop-user-pool
+  AvailabilityZones:
+    Type: String
+    Description: Comma Seperated list of Avaiability Availability Zones
+    Default: "us-east-1f,us-east-1e"
+
+Mappings:
+  AWSRegionToAMI:
+    us-east-2:
+      AMI: ami-0a0c6574ce16ce87a
+    us-east-1:
+      AMI: ami-07eb698ce660402d2
+    us-west-2:
+      AMI: ami-09568291a9d6c804c
+    us-west-1:
+      AMI: ami-04c22ba97a0c063c4
+    eu-west-3:
+      AMI: ami-0a0948de946510ec0
+    eu-west-2:
+      AMI: ami-0cb31bf24b130a0f9
+    eu-west-1:
+      AMI: ami-066826c6a40879d75
+    eu-central-1:
+      AMI: ami-0b9fee3a2d0596ed1
+    ap-northeast-2:
+      AMI: ami-0b52e57bed048ca48
+    ap-northeast-1:
+      AMI: ami-0edf19001c48838c7
+    ap-southeast-2:
+      AMI: ami-08c26730c8ee004fa
+    ap-southeast-1:
+      AMI: ami-08d4fe232c67b81b8
+    ca-central-1:
+      AMI: ami-055750f063052ec55
+    ap-south-1:
+      AMI: ami-05f009513cd58ac90
+    sa-east-1:
+      AMI: ami-0ada25501ac1375b3
+    us-gov-west-1:
+      AMI: ami-3c39a25d
+
+Resources:
+  # VPC Setup
+  VpcQuickstartStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://aws-quickstart.s3.amazonaws.com/quickstart-aws-vpc/templates/aws-vpc.template
+      Parameters:
+        AvailabilityZones: !Ref AvailabilityZones
+        NumberOfAZs: 2
+        CreatePrivateSubnets: 'true'
+        VPCCIDR: "10.0.0.0/16"
+        VPCTenancy: default
+        PublicSubnet1CIDR: "10.0.1.0/24"
+        PublicSubnet2CIDR: "10.0.2.0/24"
+        PrivateSubnet1ACIDR: "10.0.3.0/24"
+        PrivateSubnet2ACIDR: "10.0.4.0/24"
+        KeyPairName: !Ref SshKeyName
+
+  # Cloud9 IDE
+  Cloud9Environment:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      Name: "ECS-Workshop"
+      Description: "ECS Workshop Cloud9 Environment"
+      SubnetId: 
+        Fn::GetAtt: VpcQuickstartStack.Outputs.PublicSubnet1ID
+      InstanceType: m4.large
+
+  # SQS Queue setup
+  SqsQueue:
+    Type: "AWS::SQS::Queue"
+  S3EventQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: 
+        - Ref: SqsQueue
+      PolicyDocument:
+        Id: S3-EVENT-SQS-POLICY
+        Statement:
+          - 
+            Sid: MyQueuePolicy
+            Effect: Allow
+            Principal: 
+              AWS: "*"
+            Action: "sqs:*"
+            Resource: "*"
+            Condition: 
+              ArnLike:
+                aws:SourceArn: 
+                  Fn::Join: ["", ["arn:aws:s3:::", !Ref "AWS::StackName", "*"] ]
+  
+  # S3 Bucket setup
+  # Publish S3 Events to SQS Queue
+  ImageS3Bucket:
+    Type: "AWS::S3::Bucket"
+    DependsOn:
+      - SqsQueue
+      - S3EventQueuePolicy
+    Properties:
+      CorsConfiguration:
+        CorsRules:
+          - 
+            AllowedHeaders: ["*"]
+            AllowedMethods: [POST, GET, PUT, DELETE, HEAD]
+            AllowedOrigins: ["*"]
+      NotificationConfiguration:
+        QueueConfigurations:
+          - 
+            Event: "s3:ObjectCreated:Put"
+            Queue: !GetAtt [SqsQueue, Arn]
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: "images/" 
+  ImageS3BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref ImageS3Bucket
+      PolicyDocument:
+        Statement:
+          - 
+            Action:
+              - "s3:GetObject"
+            Effect: "Allow"
+            Resource:
+              Fn::Join: ["", ["arn:aws:s3:::", !Ref ImageS3Bucket, "/*"]]
+            Principal: "*"
+
+  # DynamoDB Tables
+  UserProfileDdbTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - 
+          AttributeName: "Email"
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: Email
+          KeyType: HASH
+  ContactsDdbTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - 
+          AttributeName: "user_id"
+          AttributeType: S
+        - 
+          AttributeName: "unique_id"
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: "user_id"
+          KeyType: HASH
+        - 
+          AttributeName: "unique_id"
+          KeyType: RANGE
+  SessionsDdbTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: "sessions"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - 
+          AttributeName: "id"
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: "id"
+          KeyType: HASH
+  
+  # Cognito UserPool Setup
+  CognitoUserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      AdminCreateUserConfig:
+        InviteMessageTemplate:
+          EmailMessage: "Your username is {username} and temporary password is {####}. "
+          EmailSubject: "Your temporary password"
+          SMSMessage: "Your username is {username} and temporary password is {####}. "
+        AllowAdminCreateUserOnly: false
+        UnusedAccountValidityDays: 7
+      AutoVerifiedAttributes: [ email ]
+      EmailVerificationMessage: "Your verification code is {####}. "
+      EmailVerificationSubject: "Your verification code"
+      SmsVerificationMessage: "Your verification code is {####}. "
+      SmsAuthenticationMessage: "Your authentication code is {####}. "
+      MfaConfiguration: "OFF"
+      Policies: 
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      UsernameAttributes: [email]
+      UserPoolName: !Ref CognitoUserPoolName
+  CognitoUserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+      GenerateSecret: false
+      RefreshTokenValidity: 30
+      UserPoolId: !Ref CognitoUserPool
+  CognitoIdentityPool:
+    Type: "AWS::Cognito::IdentityPool"
+    Properties:
+      AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - 
+          ServerSideTokenCheck: false
+          ProviderName: !GetAtt [CognitoUserPool, ProviderName]
+          ClientId: !Ref CognitoUserPoolClient
+  CognitoUnAuthorizedRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Federated: "cognito-identity.amazonaws.com"
+            Action: 
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals: 
+                "cognito-identity.amazonaws.com:aud": !Ref CognitoIdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+      Policies:
+        - PolicyName: "CognitoUnauthorizedPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "dynamoDB:CreateTable"
+                  - "dynamodb:GetItem"
+                  - "dynamodb:BatchGetItem"
+                  - "dynamodb:Query"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:UpdateItem"
+                  - "dynamodb:Scan"
+                Resource:
+                  - !GetAtt [SessionsDdbTable, Arn]
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:PutItem"
+                Resource:
+                  - !GetAtt [UserProfileDdbTable, Arn]
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:PutObjectAcl"
+                  - "s3:GetObject"
+                  - "s3:GetObjectAcl"
+                Resource:
+                  - Fn::Join: ["",[!GetAtt [ImageS3Bucket, Arn], "/*"]]
+  CognitoAuthorizedRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Federated: "cognito-identity.amazonaws.com"
+            Action: 
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals: 
+                "cognito-identity.amazonaws.com:aud": !Ref CognitoIdentityPool
+              "ForAnyValue:StringLike":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: "CognitoAuthorizedPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:BatchGetItem"
+                  - "dynamodb:Query"
+                  - "dynamodb:PutItem"
+                  - "dynamodb:UpdateItem"
+                  - "dynamodb:Scan"
+                  - "dynamodb:BatchWriteItem"
+                Resource:
+                  - !GetAtt [SessionsDdbTable, Arn]
+                  - !GetAtt [ContactsDdbTable, Arn]
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:BatchGetItem"
+                  - "dynamodb:Query"
+                  - "dynamodb:Scan"
+                Resource:
+                  - !GetAtt [UserProfileDdbTable, Arn]
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                Resource:
+                  - Fn::Join: ["",[!GetAtt [ImageS3Bucket, Arn], "/*"]]
+  IdentityPoolRoleMapping:
+    Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        authenticated: !GetAtt CognitoAuthorizedRole.Arn
+        unauthenticated: !GetAtt CognitoUnAuthorizedRole.Arn
+
+  # IAM Role authorizing Fargate Service
+  FargateTaskExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+  FargateTaskExecutionRolePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "fargate-execution"
+      Roles: 
+        - Ref: "FargateTaskExecutionRole"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Action:
+              - "ecr:GetAuthorizationToken"
+              - "ecr:BatchGetImage"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchCheckLayerAvailability"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "*"
+ 
+  # IAM roles for ECS Tasks
+  ThumbnailServiceTaskRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+      Policies:
+        - 
+          PolicyName: ThumbnailServiceRolePolicy
+          PolicyDocument:
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - "sqs:ListQueues"
+                Resource: "*"
+              - 
+                Effect: Allow
+                Action:
+                  - "sqs:*"
+                Resource: !GetAtt [SqsQueue, Arn]
+              - 
+                Sid: S3AccessPolicy
+                Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                  - "s3:GetBucketVersioning"
+                Resource: "*"
+              - 
+                Sid: S3WritePolicy
+                Effect: "Allow"
+                Action:
+                  - "s3:*"
+                Resource:
+                  Fn::Join: ["",[!GetAtt [ImageS3Bucket, Arn], "*"]]
+  ECSServiceAutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - 
+            Effect: Allow
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "application-autoscaling.amazonaws.com"
+      Policies:
+        - 
+          PolicyName: ecs-service-autoscaling
+          PolicyDocument:
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - application-autoscaling:*
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                Resource: "*"
+  
+  # IAM Role for ECS Autoscaling
+  EcsAutoscalingRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      ManagedPolicyArns: ["arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole"]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "application-autoscaling.amazonaws.com"
+      
+
+  # ALB Setup
+  AlbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      VpcId: !GetAtt VpcQuickstartStack.Outputs.VPCID
+      GroupDescription: "ECS Workshop ALB Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      Scheme: internet-facing
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      Subnets: 
+        - !GetAtt VpcQuickstartStack.Outputs.PublicSubnet1ID
+        - !GetAtt VpcQuickstartStack.Outputs.PublicSubnet2ID
+      Type: application
+  UserInterfaceServiceALBTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Protocol: "HTTP"
+      Port: 3000
+      TargetType: "ip"
+      VpcId: !GetAtt VpcQuickstartStack.Outputs.VPCID
+      HealthCheckProtocol: "HTTP"
+      HealthCheckPath: "/"
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher:
+        HttpCode: '200' 
+  ContactsServiceALBTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Protocol: "HTTP"
+      Port: 3000
+      TargetType: "instance"
+      VpcId: !GetAtt VpcQuickstartStack.Outputs.VPCID
+      HealthCheckProtocol: "HTTP"
+      HealthCheckPath: "/"
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher:
+        HttpCode: '200' 
+  UserProfileServiceALBTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Protocol: "HTTP"
+      Port: 3000
+      TargetType: "instance"
+      VpcId: !GetAtt VpcQuickstartStack.Outputs.VPCID
+      HealthCheckProtocol: "HTTP"
+      HealthCheckPath: "/"
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      Matcher:
+        HttpCode: '200'
+  ALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties: 
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref UserInterfaceServiceALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: "HTTP" 
+
+  # Security Groups
+  UserInterfaceServiceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      VpcId: !GetAtt VpcQuickstartStack.Outputs.VPCID
+      GroupDescription: User Interface Service Security Group.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: 
+            Fn::GetAtt: [AlbSecurityGroup, GroupId]
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !GetAtt VpcQuickstartStack.Outputs.VPCID
+  VpcCidr:
+    Description: VPC CIDR
+    Value: !GetAtt VpcQuickstartStack.Outputs.VPCCIDR
+  PublicSubnet1Id:
+    Description: Public Subnet-1 ID
+    Value: !GetAtt VpcQuickstartStack.Outputs.PublicSubnet1ID
+  PublicSubnet1CIDR:
+    Description: Public Subnet-1 CIDR
+    Value: !GetAtt VpcQuickstartStack.Outputs.PublicSubnet1CIDR
+  PublicSubnet2Id:
+    Description: Public Subnet-2 ID
+    Value: !GetAtt VpcQuickstartStack.Outputs.PublicSubnet2ID
+  PublicSubnet2CIDR:
+    Description: Public Subnet-2 CIDR
+    Value: !GetAtt VpcQuickstartStack.Outputs.PublicSubnet2CIDR
+  PrivateSubnet1Id:
+    Description: Private Subnet-1 ID
+    Value: !GetAtt VpcQuickstartStack.Outputs.PrivateSubnet1AID
+  PrivateSubnet1CIDR:
+    Description: Private Subnet-1 CIDR
+    Value: !GetAtt VpcQuickstartStack.Outputs.PrivateSubnet1ACIDR
+  PrivateSubnet2Id:
+    Description: Private Subnet-2 ID
+    Value: !GetAtt VpcQuickstartStack.Outputs.PrivateSubnet2AID
+  PrivateSubnet2CIDR:
+    Description: Private Subnet-2 CIDR
+    Value: !GetAtt VpcQuickstartStack.Outputs.PrivateSubnet2ACIDR
+  Cloud9EnvironmentName:
+    Description: AWS Cloud9 Environment Name
+    Value: !GetAtt Cloud9Environment.Name
+  SqsQueueUrl:
+    Description: SQS Queue URL
+    Value: !Ref SqsQueue
+  ImageS3BucketName:
+    Description: Image S3 Bucket Name
+    Value: !Ref ImageS3Bucket
+  UserProfileDdbTable:
+    Description: User-Profile DynamoDB Table name.
+    Value: !Ref UserProfileDdbTable
+  ContactsDdbTable:
+    Description: Contacts DynamoDB Table name.
+    Value: !Ref ContactsDdbTable
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID.
+    Value: !Ref CognitoUserPool
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID.
+    Value: !Ref CognitoUserPoolClient
+  CognitoIdentityPoolId:
+    Description: Cognito Identity Pool Client ID.
+    Value: !Ref CognitoIdentityPool
+  FargateTaskExecutionRoleArn:
+    Description: Fargate Task Execution Role ARN.
+    Value: !GetAtt [FargateTaskExecutionRole, Arn]
+  ThumbnailServiceTaskRoleArn:
+    Description: Thumbnail-Service Task IAM Role ARN.
+    Value: !GetAtt [ThumbnailServiceTaskRole, Arn]
+  AlbSecurityGroupId:
+    Description: ALB Security Group ID
+    Value: !GetAtt [AlbSecurityGroup, GroupId]
+  ALBDNSName:
+    Description: ALB DNS Name.
+    Value: !GetAtt ALB.DNSName
+  UserInterfaceServiceALBTargetGroupArn:
+    Description: User Interface Service ALB Target Group ARN.
+    Value: !Ref UserInterfaceServiceALBTargetGroup
+  ContactsServiceALBTargetGroupArn:
+    Description: Contacts Service ALB Target Group ARN.
+    Value: !Ref ContactsServiceALBTargetGroup
+  UserProfileServiceALBTargetGroupArn:
+    Description: User Profile Service ALB Target Group ARN.
+    Value: !Ref UserProfileServiceALBTargetGroup
+  ALBListenerArn:
+    Description: ALB Listener ARN.
+    Value: !Ref ALBListener
+  UserInterfaceServiceSecurityGroupId:
+    Description: User Interface Service Security Group Id.
+    Value: !Ref UserInterfaceServiceSecurityGroup
+  EcsAutoscalingRoleArn:
+    Description: Ecs Autoscaling IAM Role ARN.
+    Value: !GetAtt [EcsAutoscalingRole, Arn]

@@ -1,0 +1,31 @@
+{
+    "name": "ecs-workshop-user-interface-service-build-project",
+    "description": "Build the user-interface-service Docker image and push it to ECR",
+    "serviceRole": "<CodeBuildServiceRoleArn>",
+    "source": {
+        "type": "CODEPIPELINE",
+        "insecureSsl": false
+    },
+    "environment": {
+        "type": "LINUX_CONTAINER",
+        "image": "aws/codebuild/docker:17.09.0",
+        "computeType": "BUILD_GENERAL1_SMALL",
+        "privilegedMode": true,
+        "environmentVariables": [
+            {
+                "name": "ECR_REPOSITORY_URI",
+                "value": "<user-interface-service repositoryUri>",
+                "type": "PLAINTEXT"
+            }
+        ]
+    },
+    "artifacts": {
+        "type": "CODEPIPELINE",
+        "namespaceType": "NONE",
+        "name": "ecs-workshop-user-interface-service-build-project",
+        "packaging": "NONE"
+    },
+    "cache": {
+        "type": "NO_CACHE"
+    }
+}

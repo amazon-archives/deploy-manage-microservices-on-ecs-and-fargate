@@ -1,0 +1,90 @@
+{
+    "pipeline": {
+        "name": "ecs-workshop-user-interface-service-codepipeline",
+        "roleArn": "<CodePipelineServiceRoleArn>",
+        "artifactStore": {
+            "type": "S3",
+            "location": "<PipleineArtifactBucket>"
+        },
+        "stages": [
+            {
+                "name": "Source",
+                "actions": [
+                    {
+                        "name": "Source",
+                        "actionTypeId": {
+                            "category": "Source",
+                            "owner": "AWS",
+                            "provider": "CodeCommit",
+                            "version": "1"
+                        },
+                        "runOrder": 1,
+                        "configuration": {
+                            "BranchName": "master",
+                            "PollForSourceChanges": "false",
+                            "RepositoryName": "ecs-workshop-user-interface-service"
+                        },
+                        "outputArtifacts": [
+                            {
+                                "name": "MyApp"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Build",
+                "actions": [
+                    {
+                        "name": "CodeBuild",
+                        "actionTypeId": {
+                            "category": "Build",
+                            "owner": "AWS",
+                            "provider": "CodeBuild",
+                            "version": "1"
+                        },
+                        "runOrder": 1,
+                        "configuration": {
+                            "ProjectName": "ecs-workshop-user-interface-service-build-project"
+                        },
+                        "outputArtifacts": [
+                            {
+                                "name": "MyAppBuild"
+                            }
+                        ],
+                        "inputArtifacts": [
+                            {
+                                "name": "MyApp"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Staging",
+                "actions": [
+                    {
+                        "name": "user-interface-service",
+                        "actionTypeId": {
+                            "category": "Deploy",
+                            "owner": "AWS",
+                            "provider": "ECS",
+                            "version": "1"
+                        },
+                        "runOrder": 1,
+                        "configuration": {
+                            "ClusterName": "ecs-workshop-cluster",
+                            "FileName": "imagedefinitions.json",
+                            "ServiceName": "user-interface-service"
+                        },
+                        "inputArtifacts": [
+                            {
+                                "name": "MyAppBuild"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "cluster": "ecs-workshop-cluster",
+    "serviceName": "thumbnail-service",
+    "taskDefinition": "ecs-workshop-thumbnail-service",
+    "desiredCount": 1,
+    "launchType": "EC2"
+}

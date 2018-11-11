@@ -1,0 +1,21 @@
+{
+    "cluster": "ecs-workshop-cluster",
+    "serviceName": "user-interface-service",
+    "taskDefinition": "ecs-workshop-user-interface-service",
+    "desiredCount": 1,
+    "launchType": "FARGATE",
+    "loadBalancers": [
+        {
+            "targetGroupArn": "<UserInterfaceServiceALBTargetGroupArn>",
+            "containerName": "user-interface-service-container",
+            "containerPort": 3000
+        }
+    ],
+    "networkConfiguration": {
+        "awsvpcConfiguration": {
+            "subnets": ["<PrivateSubnet1Id>", "<PrivateSubnet2Id>"],
+            "securityGroups": ["<UserInterfaceServiceSecurityGroupId>"],
+            "assignPublicIp": "ENABLED"
+        }
+    }
+}

@@ -1,0 +1,59 @@
+{
+    "family": "ecs-workshop-user-profile-service",
+    "networkMode": "bridge",
+    "requiresCompatibilities": ["EC2"],
+    "containerDefinitions": [
+        {
+            "name": "user-profile-service-container",
+            "image": "<repositoryUri>",
+            "cpu": 256,
+            "memory": 512,
+            "essential": true,
+            "portMappings":[
+                {
+                    "containerPort": 3000,
+                    "hostPort": 0,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment":[
+                {
+                    "name": "AWS_REGION",
+                    "value": "<AWS-REGION>"
+                },
+                {
+                    "name": "IMAGE_BUCKET_NAME",
+                    "value": "<ImageS3BucketName>"
+                },
+                {
+                    "name": "USER_PROFILE_DDB_TABLE_NAME",
+                    "value": "<UserProfileDdbTable>"
+                },
+                {
+                    "name": "CONTACTS_DDB_TABLE_NAME",
+                    "value": "<ContactsDdbTable>"
+                },
+                {
+                    "name": "COGNITO_USER_POOL_ID",
+                    "value": "<CognitoUserPoolId>"
+                },
+                {
+                    "name": "COGNITO_USER_POOL_CLIENT_ID",
+                    "value": "<CognitoUserPoolClientId>"
+                },
+                {
+                    "name": "AWS_COGNITO_IDENTITY_POOL_ID",
+                    "value": "<CognitoIdentityPoolId>"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "ecs-workshop/user-profile-service",
+                    "awslogs-region": "<AWS-REGION>",
+                    "awslogs-stream-prefix": "user-profile-service"
+                }
+            }
+        }
+    ]
+}

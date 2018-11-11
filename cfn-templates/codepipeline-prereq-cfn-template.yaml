@@ -1,0 +1,212 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploy a CodePipeline for automating vulnerability scaning using CoreOS Clair before creating a Container on ECS.
+
+Parameters:
+  CodeCommitRepoName:
+    Type: String
+    Description: CodeCommit Repository Name
+    Default: "ecs-workshop-user-interface-service"
+  EcrRepositoryArn:
+    Type: String
+    Description: user-interface-service ECR repository Arn.
+  CodeBuildProjectName:
+    Type: String
+    Description: CodeBuild Project Name
+    Default: "ecs-workshop-user-interface-service-build-project"
+
+Resources:
+  CodeCommitRepo:
+    Type: "AWS::CodeCommit::Repository"
+    Properties:
+      RepositoryName: !Ref CodeCommitRepoName
+      RepositoryDescription: "ECS Workshop user-interface-service repository"
+  
+  PipleineArtifactBucket:
+    Type: "AWS::S3::Bucket"
+  
+  CodeBuildLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName:
+        Fn::Join: ["",["/aws/codebuild/", !Ref CodeBuildProjectName]]
+
+  CodeBuildServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "codebuild.amazonaws.com"
+
+  CodeBuildServiceRolePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      Roles: [!Ref CodeBuildServiceRole]
+      PolicyName: CodeBuildTrustPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Sid: "CloudWatchLogPolicy"
+            Effect: "Allow"
+            Resource:
+              Fn::Join: ["",["arn:aws:logs:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":log-group:/aws/codebuild/", !Ref "CodeBuildProjectName", "*"]]
+            Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+          - 
+            Sid: S3AccessPolicy
+            Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+              - "s3:GetObjectVersion"
+              - "s3:GetBucketVersioning"
+            Resource: "*"
+          - 
+            Sid: S3WritePolicy
+            Effect: "Allow"
+            Action: ["s3:PutObject"]
+            Resource: 
+              Fn::Join: ["",[!GetAtt [PipleineArtifactBucket, Arn], "*"]]
+          -
+            Sid: ECRAuthroizationPolicy
+            Effect: "Allow"
+            Action:
+              - "ecr:GetAuthorizationToken"
+            Resource: "*"
+          - 
+            Sid: ECRPolicy
+            Effect: "Allow"
+            Action: 
+              - "ecr:GetAuthorizationToken"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:GetRepositoryPolicy"
+              - "ecr:DescribeRepositories"
+              - "ecr:ListImages"
+              - "ecr:DescribeImages"
+              - "ecr:BatchGetImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+              - "ecr:PutImage"
+            Resource: !Ref EcrRepositoryArn
+
+  CodePipelineServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "codepipeline.amazonaws.com"
+
+  CodePipelineServiceRolePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      Roles: [!Ref CodePipelineServiceRole]
+      PolicyName: CodePipelineTrustPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Sid: S3AccessPolicy
+            Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+              - "s3:GetObjectVersion"
+              - "s3:GetBucketVersioning"
+            Resource: "*"
+          - 
+            Sid: S3WritePolicy
+            Effect: "Allow"
+            Action: ["s3:PutObject"]
+            Resource: 
+              Fn::Join: ["",[!GetAtt [PipleineArtifactBucket, Arn], "*"]]
+          - 
+            Sid: CodeCommitPolicy
+            Effect: "Allow"
+            Action:
+              - "codecommit:CancelUploadArchive"
+              - "codecommit:GetBranch"
+              - "codecommit:GetCommit"
+              - "codecommit:GetUploadArchiveStatus"
+              - "codecommit:UploadArchive"
+            Resource: !GetAtt [CodeCommitRepo, Arn]
+          - 
+            Sid: EcsPolicy
+            Effect: "Allow"
+            Action: ["ecs:*"]
+            Resource: "*"
+          -
+            Sid: IamPolicy
+            Effect: "Allow"
+            Action: ["iam:PassRole"]
+            Resource: "*"
+          - 
+            Sid: CodeBuildPolicy
+            Effect: "Allow"
+            Action:
+              - "codebuild:BatchGetBuilds"
+              - "codebuild:StartBuild"
+            Resource: "*"
+
+  EventsServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "events.amazonaws.com"
+              
+  EventsServiceRolePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      Roles: [!Ref EventsServiceRole]
+      PolicyName: EventsTrustPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - 
+            Sid: "CodePipelinePolicy"
+            Effect: "Allow"
+            Resource: "*"
+            Action:
+              - "codepipeline:StartPipelineExecution"
+  
+Outputs:
+  CodeCommitRepoSshUrl:
+    Description: CodeCommit Repository SSH URL
+    Value: !GetAtt [CodeCommitRepo, CloneUrlSsh]
+
+  CodeCommitRepoArn:
+    Description: CodeCommit Repository Arn
+    Value: !GetAtt [CodeCommitRepo, Arn]
+
+  PipleineArtifactBucket:
+    Description: CodePipeline Artifact S3 Bucket Name.
+    Value: !Ref PipleineArtifactBucket
+
+  CodeBuildServiceRoleArn:
+    Description: IAM Service Role for CodeBuild
+    Value: !GetAtt CodeBuildServiceRole.Arn
+
+  CodePipelineServiceRoleArn:
+    Description: IAM Service Role for CodePipeline
+    Value: !GetAtt CodePipelineServiceRole.Arn
+  
+  EventsServiceRoleArn:
+    Description: IAM Service Role for CloudWatch Event Rule
+    Value: !GetAtt EventsServiceRole.Arn
+
+
+    

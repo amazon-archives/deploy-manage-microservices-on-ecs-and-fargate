@@ -1,0 +1,60 @@
+{
+    "family": "ecs-workshop-user-interface-service",
+    "executionRoleArn": "<FargateTaskExecutionRoleArn>",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024",
+    "containerDefinitions": [
+        {
+            "name": "user-interface-service-container",
+            "image": "<repositoryUri>",
+            "essential": true,
+            "portMappings":[
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment":[
+                {
+                    "name": "AWS_REGION",
+                    "value": "<AWS_REGION>"
+                },
+                {
+                    "name": "IMAGE_BUCKET_NAME",
+                    "value": "<ImageS3BucketName>"
+                },
+                {
+                    "name": "USER_PROFILE_DDB_TABLE_NAME",
+                    "value": "<UserProfileDdbTable>"
+                },
+                {
+                    "name": "CONTACTS_DDB_TABLE_NAME",
+                    "value": "<ContactsDdbTable>"
+                },
+                {
+                    "name": "COGNITO_USER_POOL_ID",
+                    "value": "<CognitoUserPoolId>"
+                },
+                {
+                    "name": "COGNITO_USER_POOL_CLIENT_ID",
+                    "value": "<CognitoUserPoolClientId>"
+                },
+                {
+                    "name": "AWS_COGNITO_IDENTITY_POOL_ID",
+                    "value": "<CognitoIdentityPoolId>"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "ecs-workshop/user-interface-service",
+                    "awslogs-region": "<AWS_REGION>",
+                    "awslogs-stream-prefix": "user-interface-service"
+                }
+            }
+        }
+    ]
+}

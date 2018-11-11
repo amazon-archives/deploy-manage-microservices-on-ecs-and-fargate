@@ -1,0 +1,3 @@
+[submodule "quickstart-aws-vpc"]
+	path = quickstart-aws-vpc
+	url = git@github.com:aws-quickstart/quickstart-aws-vpc.git

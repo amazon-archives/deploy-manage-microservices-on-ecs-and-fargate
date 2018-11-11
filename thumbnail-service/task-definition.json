@@ -1,0 +1,33 @@
+{
+    "family": "ecs-workshop--thumbnail-service",
+    "taskRoleArn": "<ThumbnailServiceTaskRoleArn>",
+    "networkMode": "bridge",
+    "requiresCompatibilities": ["EC2"],
+    "containerDefinitions": [
+        {
+            "name": "thumbnail-service-container",
+            "image": "<repositoryUri>",
+            "cpu": 512,
+            "memory": 1024,
+            "essential": true,
+            "environment":[
+                {
+                    "name": "AWS_REGION",
+                    "value": "<AWS-REGION>"
+                },
+                {
+                    "name": "SQS_QUEUE_URL",
+                    "value": "<SqsQueueUrl>"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "ecs-workshop/thumbnail-service",
+                    "awslogs-region": "<AWS-REGION>",
+                    "awslogs-stream-prefix": "thumbnail-service"
+                }
+            }
+        }
+    ]
+}

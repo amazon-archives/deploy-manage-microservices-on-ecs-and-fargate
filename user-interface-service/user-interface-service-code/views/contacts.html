@@ -1,0 +1,70 @@
+{{> header }}
+<div class="pull-right">
+      <!-- <div class="pull-right"> -->
+        <ul class="nav nav-pills pull-right" >
+          <li class="first-pill">
+          <img class="header-img" src='{{ user.profileImg }}?sz=40' alt="">
+        </li><li>
+          <div class="namelbl">Hello, {{ user.first_name }}</div>
+        </li><li>
+          <div><a id='usersbutton' onclick="loadUsers()"  class="logout btn-default">Users</a></div>
+        </li><li>
+          <div>
+            <a href="/" class="logout btn-default">Logout</a>
+          </div>
+        </li>
+        </ul> 
+ </div>       
+
+<header id="header">
+            <div class="container pt-10 pb-5 text-center h-80">
+              <h1></h1>
+            </div>
+          </header>
+  <main id="main">
+<div class="container mb-40">    
+<div class="account-wall">    
+  <div class="form-signup">
+            <form id="impcsv_form">
+                <div class="signup-form__inputs mb-10">
+                  <input name="uplcsv" type="file" class="input--file form-control" accept=".csv" placeholder="Import CSV"/>
+                </div>
+                  <div class="error-message alert alert-danger hidden">
+                      Choose a CSV to import.
+                  </div>
+                  <div class="signup-form__inputs">
+                    <button class="btn btn-lg btn-primary btn-block submit-btn" type="submit">Import CSV</button>
+                </div>
+              </form>
+  </div>
+</div>
+</div>
+    <div class="container mb-40">
+
+      <h3>Your Contacts</h3>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone No</th>
+            <th>Created On</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{# users }}
+            <tr>
+              <td><img class="tbl-img" src='{{ profileImg }}?sz=40' alt=""></td>
+              <td>{{ first_name }} {{ last_name }}</td>
+              <td>{{ email }}</td>
+              <td>{{ phno }}</td>
+              <td>{{ createdOn }}</td>
+            </tr>
+          {{/ users }}
+          {{^users }}<tr><td colspan="5">No contacts yet. Import your contacs by selecting CSV file.</td></tr>{{/ users }}
+        </tbody>
+      </table>
+    </div>
+  </main>
+{{> footer }}

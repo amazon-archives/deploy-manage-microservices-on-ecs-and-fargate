@@ -1,0 +1,18 @@
+{
+    "PolicyName": "UIServiceScaleInPolicy",
+    "ServiceNamespace": "ecs",
+    "ResourceId": "service/ecs-workshop-cluster/user-interface-service",
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "PolicyType": "StepScaling",
+    "StepScalingPolicyConfiguration": {
+        "AdjustmentType": "ChangeInCapacity",
+        "StepAdjustments": [
+            {
+                "MetricIntervalUpperBound": 0.0,
+                "ScalingAdjustment": -1
+            }
+        ],
+        "Cooldown": 300,
+        "MetricAggregationType": "Average"
+    }
+}

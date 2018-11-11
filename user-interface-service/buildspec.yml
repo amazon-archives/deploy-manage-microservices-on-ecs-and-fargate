@@ -1,0 +1,32 @@
+# AWS CodeBuild buildspec.yml to build user-interface-service Docker Image
+
+# Set the following variables as CodeBuild Project Environment Variables
+# ECR_REPOSITORY_URI
+
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo Fetching ECR Login
+      - ECR_LOGIN=$(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - echo Logging in to Amazon ECR...
+      - $ECR_LOGIN
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $ECR_REPOSITORY_URI:latest .
+      - docker tag $ECR_REPOSITORY_URI:latest $ECR_REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $ECR_REPOSITORY_URI:latest
+      - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      # name -> container name in the Service's Task Definition
+      - printf '[{"name":"user-interface-service-container","imageUri":"%s"}]' $ECR_REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+artifacts:
+  files: imagedefinitions.json

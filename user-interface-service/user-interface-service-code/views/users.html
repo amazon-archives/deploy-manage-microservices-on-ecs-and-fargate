@@ -1,0 +1,52 @@
+{{> header }}
+<div class="pull-right">
+
+      <!-- <div class="pull-right"> -->
+        <ul class="nav nav-pills pull-right">
+          <li class="first-pill">
+          <img class="header-img" src='{{ user.profileImg }}?sz=40' alt="">
+        </li><li>
+          <div class="namelbl">Hello, {{ user.first_name }}</div>
+        </li><li>
+          <div><a id='contactsbutton' onclick="loadContacts()"  class="logout btn-default">Contacts</a></div>
+        </li><li>
+          <div>
+            <a href="/" class="logout btn-default">Logout</a>
+          </div>
+        </li>
+        </ul> 
+ </div>       
+
+<header id="header">
+            <div class="container pt-10 pb-5 text-center h-80">
+              <h1></h1>
+            </div>
+          </header>
+  <main id="main">
+    <div class="container mb-40">
+
+      <h3>Registered Users</h3>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Created On</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{# users }}
+            <tr>
+              <td><img class="tbl-img" src='{{ profileImg }}?sz=40' alt=""></td>
+              <td>{{ first_name }} {{ last_name }}</td>
+              <td>{{ email }}</td>
+              <td>{{ createdOn }}</td>
+            </tr>
+          {{/ users }}
+         
+        </tbody>
+      </table>
+    </div>
+  </main>
+{{> footer }}
