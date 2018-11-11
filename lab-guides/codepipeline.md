@@ -162,7 +162,7 @@ ___
 
 ## Task 6 - Push a change to CodeCommit repository to trigger the CodePipeline
 
-Now that we have configured the event rule and target, let us push a change to the CodeCommit repository and verify that our CodePipeline is triggered. We will change the the login button text and color.
+Now that we have configured the CloudWatch Event rule and target, let us push a change to the CodeCommit repository and verify that our CodePipeline is triggered. We will change the the login button text.
 
 1. To change button text edit the file **ecs-workshop-user-interface-service/user-interface-service/user-interface-service-code/views/index.html** as shown below.
 
@@ -174,25 +174,7 @@ Now that we have configured the event rule and target, let us push a change to t
 <button class="btn btn-lg btn-primary btn-block submit-btn" type="submit">Sign in</button>
 ```
 
-2. Edit the **ecs-workshop-user-interface-service/user-interface-service-code/public/css/main.css** file to change the color of the button as shown below.
-
-```css
-# FROM
-.btn-primary {
-  color: #fff;
-  background-color: #29ABE2;
-  border-color: #1d9ed5;
-}
-
-# TO
-.btn-primary {
-  color: #fff;
-  background-color: #cc0000;
-  border-color: #cc0000;
-}
-```
-
-3. Push the updated code to CodeCommit Repository.
+2. Push the updated code to CodeCommit Repository.
 
 ```bash
 cd ../../ecs-workshop-user-interface-service/
@@ -202,9 +184,9 @@ git commit -m "changed login button text and color"
 git push
 ```
 
-6. Navigate to the CodePipeline Console to monitor your pipeline.
+3. Navigate to the CodePipeline Console to monitor your pipeline.
 
-7. Once the deployment is complete, you can verify the Log in page of the application.
+4. Once the deployment is complete, you can verify the Log in page of the application.
 
 ___
 
