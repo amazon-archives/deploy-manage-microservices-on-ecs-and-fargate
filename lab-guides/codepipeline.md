@@ -32,11 +32,11 @@ ___
 
 ## Task 2 - Create the CodeBuild Project
 
-The CloudFormation stack created at the begining of the section created the prerequisites for the CodeBuild Project. The prerequisites include:
+The CloudFormation stack created in the previous task created the prerequisites for the CodeBuild Project. The prerequisites include:
 
-- **CodePipeline Artifact S3 Bucket** - The CodeBuild output artifact is stored in this S3 Bucket.
-- **CodeBuild CloudWatch Log Group** - CodeBuild project build logs are sent to this Log Group.
-- **IAM Service Role for CodeBuild** - CodeBuild will need IAM permission to pull the image from ECR, put the build artifact to the Artifact S3 Bucket and write build logs to CloudWatch Logs.
+- **CodePipeline Artifact S3 Bucket** - The CodeBuild output artifact are stored in a S3 Bucket.
+- **CodeBuild CloudWatch Log Group** - CodeBuild project logs are sent to CloudWatch logs
+- **IAM Service Role for CodeBuild** - CodeBuild will need IAM permission to push the  container image to ECR, put any build artifact to the Artifact S3 Bucket and write build logs to CloudWatch Logs.
 
 A **buildspec.yml** file is located in the **user-interface-service** folder. This file provides the build instructions to the CodeBuild service.
 
@@ -44,7 +44,7 @@ Create the CodeBuild project. Edit the **codepipeline/codebuild-project.json** f
 
 | Parameter                                   | Value                                                            |
 |---------------------------------------------|------------------------------------------------------------------|
-|&lt;CodeBuildServiceRoleArn&gt;              | ecs-workshop-ui-service-codepipeline CloudFormation stack Output |
+|&lt;CodeBuildServiceRoleArn&gt;              | ecs-workshop-ui-service-codepipeline CloudFormation stack output |
 |&lt;user-interface-service repositoryUri&gt; | user-interface-service ECR repository URI                        |
 
 ```bash
@@ -65,7 +65,8 @@ In this task let us push an initial commit of the user-interface-service code to
 ```bash
 cd ../..
 
-git clone ssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/ecs-workshop-user-interface-service
+# Replace <CodeCommitRepoSshUrl> - get value from ecs-workshop-ui-service-codepipeline CloudFormation stack output
+git clone <CodeCommitRepoSshUrl>
 ```
 
 3. Copy the contents of the user-interface-service to the cloned folder.
@@ -180,7 +181,7 @@ Now that we have configured the CloudWatch Event rule and target, let us push a 
 cd ../../ecs-workshop-user-interface-service/
 
 git add *
-git commit -m "changed login button text and color"
+git commit -m "changed login button text"
 git push
 ```
 

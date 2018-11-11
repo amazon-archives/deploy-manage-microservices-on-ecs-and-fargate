@@ -71,7 +71,20 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 3. Create an ECS Service from the above Task Definition.
 
 ```bash
-aws ecs create-service --cli-input-json file://service-definition.json 
+# Deploy the thumbnail-service
+aws ecs create-service --cli-input-json file://service-definition.json
+
+# Verify the thumbnail-service has been deployed successfully
+# The command will wait till the service has been deployed. No output is returned.
+aws ecs wait services-stable \
+--cluster ecs-workshop-cluster \
+--services thumbnail-service
+
+# Verify the desired and running tasks for the service
+aws ecs describe-services \
+--cluster ecs-workshop-cluster \
+--services thumbnail-service \
+--query 'services[0].{desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount}'
 ```
 
 ___

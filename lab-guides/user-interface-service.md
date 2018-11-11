@@ -21,7 +21,7 @@ cd ../user-interface-service
 2. Create ECR Repository for user-interface-service
 
 ```bash
-# Note the repositoryUri - output of below command
+# Note the repositoryUri and repositoryArn - output of below command
 aws ecr create-repository --repository-name ecs-workshop/user-interface-service
 ```
 
@@ -72,9 +72,9 @@ ___
 
 ## Task 3 - Deploy the user-interface-service as ECS Service
 
-There are a few prerequisites for deploying an ECS service on Fargate. This involves creating a **Task Execution Role** and **Security Group**. For tasks that use the Fargate launch type, the task execution role is required to pull container images from Amazon ECR or to use the awslogs log driver. Since Fargate launch type supports awsvpc network mode, a Security Group is required to provide network control to the containers launched by the ECS service.
+There are a few prerequisites for deploying an ECS service on Fargate. This involves creating a **Task Execution Role** and **Security Group**. A Security group is required as Fargate launch type uses the [awsvpc network mode](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking.html). The awsvpc network mode attaches an ENI (Elastic network interface) to the ECS task and hence needs a Security group to control the traffic flow. For tasks that use the Fargate launch type, the task execution role will need permissions to pull the container images from ECR and to write logs to CloudWatch logs.
 
-1. The ALB, Target Group and Security Group were created by the CloudFormation stack created in the Prerequisite section.
+1. The Security Group and Task Execution Role (FargateTaskExecutionRoleArn) were created by the ecs-workshop CloudFormation stack created in [Lab Setup](lab-setup.md#task-1-deploy-the-cloudformation-template) activity.
 
 2. Create a CloudWatch LogGroup to collect user-interface-service.
 
@@ -90,7 +90,7 @@ Let us set the environment variables in the task-definition.json. Replace the fo
 |------------------------------------|-----------------------------------------------|
 |&lt;FargateTaskExecutionRoleArn&gt; | ecs-workshop CloudFormation stack Output      |
 |&lt;repositoryUri&gt;               | ECR repository Uri of user-interface-service  |
-|&lt;AWS_REGION&gt;                  | AWS Region e.g. us-east-1                     |
+|&lt;AWS-REGION&gt;                  | AWS Region e.g. us-east-1                     |
 |&lt;ImageS3BucketName&gt;           | ecs-workshop CloudFormation stack Output      |
 |&lt;UserProfileDdbTable&gt;         | ecs-workshop CloudFormation stack Output      |
 |&lt;ContactsDdbTable&gt;            | ecs-workshop CloudFormation stack Output      |
@@ -112,7 +112,20 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 |&lt;UserInterfaceServiceSecurityGroupId&gt;  | ecs-workshop CloudFormation stack Output |
 
 ```bash
-aws ecs create-service --cli-input-json file://service-definition.json 
+# Deploy the user-interface-service
+aws ecs create-service --cli-input-json file://service-definition.json
+
+# Verify the user-interface-service has been deployed successfully
+# The command will wait till the service has been deployed.  No output is returned.
+aws ecs wait services-stable \
+--cluster ecs-workshop-cluster \
+--services user-interface-service
+
+# Verify the desired and running tasks for the service
+aws ecs describe-services \
+--cluster ecs-workshop-cluster \
+--services user-interface-service \
+--query 'services[0].{desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount}'
 ```
 
 ___

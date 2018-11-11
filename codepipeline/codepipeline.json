@@ -61,7 +61,7 @@
                 ]
             },
             {
-                "name": "Staging",
+                "name": "Deploy",
                 "actions": [
                     {
                         "name": "user-interface-service",

@@ -2,7 +2,7 @@
     "family": "ecs-workshop-user-interface-service",
     "executionRoleArn": "<FargateTaskExecutionRoleArn>",
     "networkMode": "awsvpc",
-    "requiresCompatibilities": ["FARGATE"],
+    "requiresCompatibilities": ["EC2", "FARGATE"],
     "cpu": "512",
     "memory": "1024",
     "containerDefinitions": [

@@ -13,18 +13,29 @@ The process to create services that scale automatically has been made very easy,
 - Create Scaling Policy.
 - Create CloudWatch Alarms.
 
+___
+
 ## Setup auto scaling
 
-The User-Interface-Service's desired capacity is currently set to 1. We will setup autoscaling with:
+Let us verify the current desired count of the user-interface-service.
 
-- minimum and desired capacity = 2
-- maximum capacity = 2
+```bash
+# Verify the desired and running tasks for the service
+aws ecs describe-services \
+--cluster ecs-workshop-cluster \
+--services user-interface-service \
+--query 'services[0].{desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount}'
+```
+
+The above command showed that the user-interface-service's desired capacity is currently set to 1. We will setup autoscaling with CloudWatch metric **CPUUtilization** as the trigger. The capacity will be set as follows:
+
+- minimum capacity = 2
+- desired capacity = 2
+- maximum capacity = 3
 
 ### Steps
 
-1. We will use the default ECS Service CloudWatch metric **CPUUtilization**.
-
-2. Register the User-Interface-Service as an Application Auto Scaling target.
+1. Register the User-Interface-Service as an Application Auto Scaling target.
 
 ```bash
 # Replace <EcsAutoscalingRoleArn> with value from ecs-workshop CloudFormation stack output
@@ -35,6 +46,13 @@ aws application-autoscaling register-scalable-target \
 --min-capacity 2 \
 --max-capacity 3 \
 --role-arn "<EcsAutoscalingRoleArn>"
+
+# Verify the desired and running tasks for the service.
+# Notice that the desired cacpity is now set to 2
+aws ecs describe-services \
+--cluster ecs-workshop-cluster \
+--services user-interface-service \
+--query 'services[0].{desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount}'
 ```
 
 3. Configure the scale-out policy when the average ECS service CPU utilization is greater than 50% for 1 minute.
@@ -43,7 +61,7 @@ aws application-autoscaling register-scalable-target \
 # Add Scale-Out Policy
 # Note the PolicyARN - required for the next command
 aws application-autoscaling put-scaling-policy \
---cli-input-json file://user-interface-service/service-scale-out-policy.json
+--cli-input-json file://service-scale-out-policy.json
 ```
 
 ```bash
@@ -68,7 +86,7 @@ aws cloudwatch put-metric-alarm \
 # Add Scale-In Policy
 # Note the PolicyARN - required for the next command
 aws application-autoscaling put-scaling-policy \
---cli-input-json file://user-interface-service/service-scale-in-policy.json
+--cli-input-json file://service-scale-in-policy.json
 ```
 
 ```bash
@@ -87,29 +105,19 @@ aws cloudwatch put-metric-alarm \
 --alarm-actions  "<PolicyARN from above command>"
 ```
 
-5. Verify the ECS service now has 2 tasks running after the auto scaling has been setup.
-
-```bash
-aws ecs describe-services \
---cluster ecs-workshop-cluster \
---services user-interface-service \
---query 'services[*].{desiredCount:desiredCount, runningCount:runningCount}'
-```
-
-6. Now that the desired count has been set to 2. Let us now simulate load to test the autoscaling.
+5. Let us now simulate load to test the autoscaling.
 
 ```bash
 # Using Apache Bench to simulae load
 # Replace <ALBDNSName> with Output value from the ecs-workshop CloudFormation Stack.
-ab -n 300000 -c 1000 http://<ALBDNSName>/
+ab -n 150000 -c 500 http://<ALBDNSName>/
 
-# Wait for 2 minutes
+# Wait for a minimum of 3-5 minutes for the scaling event
 # Open a new terminal and execute the below command to verify the desired count, which will now be set to 3
 aws ecs describe-services \
 --cluster ecs-workshop-cluster \
 --services user-interface-service \
 --query 'services[*].{desiredCount:desiredCount, runningCount:runningCount}'
-
 ```
 
 ___

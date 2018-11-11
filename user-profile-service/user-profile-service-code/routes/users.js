@@ -110,6 +110,10 @@ module.exports = (app, config, partials) => {
         var ddb = new AWS.DynamoDB({
             apiVersion: '2012-10-08'
         });
+        var imageURL = 'default.jpeg';
+        if (data.uploaded_image && data.uploaded_image != '') {
+            imageURL = data.uploaded_image;
+        }
 
         var user = {
             "Email": {
@@ -122,7 +126,7 @@ module.exports = (app, config, partials) => {
                 "S": data.last_name
             },
             "Profile_Img": {
-                "S": data.uploaded_image
+                "S": imageURL
             },
             "TimeStamp": {
                 "S": getDate()
@@ -168,7 +172,7 @@ module.exports = (app, config, partials) => {
                         first_name: user.FirstName.S,
                         last_name: user.LastName.S,
                         email: user.Email.S,
-                        profileImg: 'https://s3.amazonaws.com/' + config.aws_user_img_bucket + '/thmb/images/' + user.Profile_Img.S,
+                        profileImg: 'https://s3.dualstack.'+config.aws_region+'.amazonaws.com/' + config.aws_user_img_bucket + '/thmb/images/' + user.Profile_Img.S,
                         createdOn: user.TimeStamp.S
                     });
                 });
@@ -214,6 +218,7 @@ module.exports = (app, config, partials) => {
                 res.json({
                     status: 'success',
                     bucketName: config.aws_user_img_bucket,
+                    region: config.aws_region,
                     message: url
                 })
                 res.end()

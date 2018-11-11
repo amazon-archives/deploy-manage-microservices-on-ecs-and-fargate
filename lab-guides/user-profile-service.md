@@ -87,7 +87,7 @@ aws logs create-log-group --log-group-name ecs-workshop/user-profile-service
 |Parameters                          | Value                                         |
 |------------------------------------|-----------------------------------------------|
 |&lt;repositoryUri&gt;               | ECR repository Uri of contacts-service        |
-|&lt;AWS_REGION&gt;                  | AWS Region e.g. us-east-1                     |
+|&lt;AWS-REGION&gt;                  | AWS Region e.g. us-east-1                     |
 |&lt;ImageS3BucketName&gt;           | ecs-workshop CloudFormation stack Output      |
 |&lt;UserProfileDdbTable&gt;         | ecs-workshop CloudFormation stack Output      |
 |&lt;ContactsDdbTable&gt;            | ecs-workshop CloudFormation stack Output      |
@@ -106,7 +106,20 @@ aws ecs register-task-definition --cli-input-json file://task-definition.json
 |&lt;UserProfileServiceALBTargetGroupArn&gt;| ecs-workshop CloudFormation stack Output |
 
 ```bash
-aws ecs create-service --cli-input-json file://service-definition.json 
+# Deploy the user-profile-service
+aws ecs create-service --cli-input-json file://service-definition.json
+
+# Verify the user-profile-service has been deployed successfully
+# The command will wait till the service has been deployed. No output is returned.
+aws ecs wait services-stable \
+--cluster ecs-workshop-cluster \
+--services user-profile-service
+
+# Verify the desired and running tasks for the service
+aws ecs describe-services \
+--cluster ecs-workshop-cluster \
+--services user-profile-service \
+--query 'services[0].{desiredCount:desiredCount,runningCount:runningCount,pendingCount:pendingCount}'
 ```
 
 ___

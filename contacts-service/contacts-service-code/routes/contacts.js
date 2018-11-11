@@ -73,7 +73,7 @@ module.exports = (app, config, partials) => {
                         first_name: user.first_name.S,
                         last_name: user.second_name.S,
                         email: user.email.S,
-                        profileImg: 'https://s3.amazonaws.com/' + config.aws_contact_img_bucket + '/thmb/images/' + user.image.S,
+                        profileImg: 'https://s3.dualstack.'+config.aws_region+'.amazonaws.com/' + config.aws_contact_img_bucket +  '/thmb/images/' + user.image.S,
                         phno: user.phonenumber.S,
                         createdOn: user.created_on.S,
                         unique_id: user.unique_id.S

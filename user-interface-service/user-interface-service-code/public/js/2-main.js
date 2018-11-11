@@ -72,7 +72,7 @@ $(function() {
                 $('.submit-btn').removeClass('disabled');
                 $('.error-message').addClass('hidden');
                 $('.error-message').text('All fields are required.');
-                $('.profile-img').attr('src', 'https://s3.amazonaws.com/' + response.bucketName + '/images/' + objFile.name);
+                $('.profile-img').attr('src', 'https://s3.dualstack.'+response.region+'.amazonaws.com/' + response.bucketName + '/images/' + objFile.name);
                 $(".input--image").val(objFile.name);
 
             }).error(function(error) {

@@ -16,7 +16,7 @@ import AWS, {
 const app = express()
 
 AWS.config.update({
-  	credentials: new AWS.CognitoIdentityCredentials({
+    credentials: new AWS.CognitoIdentityCredentials({
     IdentityPoolId: config.aws_cognito_identity_pool_id
   },{
     region: config.aws_region
@@ -26,10 +26,11 @@ AWS.config.update({
 
 var DynamoDBStore = require('connect-dynamodb')({session: session});
 app.use(session({store: new DynamoDBStore({
-  AWSConfigJSON: {
-    region: config.aws_region
+    AWSConfigJSON: {
+      region: config.aws_region
+    }
   }
-}), secret: 'keyboard cat'}));
+  ), secret: 'keyboard cat'}));
 
 app.use(cors({credentials: true, origin: true}))
 app.use(bodyParser.json());

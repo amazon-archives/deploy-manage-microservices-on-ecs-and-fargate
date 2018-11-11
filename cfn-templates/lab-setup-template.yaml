@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Provision AWS resources required for ECS Workshop - Contacts Management Demo Application
+Description: Setup Lab environment for ECS Workshop - Contacts Management Demo Application
 
 Parameters:
   SshKeyName:
@@ -9,46 +9,23 @@ Parameters:
     Description: Name of the Cognito User Pool
     Type: String
     Default: ecs-workshop-user-pool
+  Cloud9InstanceType:
+    Type: String
+    Default: m4.large
+    Description: Cloud9 Instance Type
+  EcsWorkshopRepositoryUrl:
+    Type: String
+    Description: ECS Workshop Github repository URL
+    Default: "https://github.com/aws-samples/deploy-manage-microservices-on-ecs-and-fargate.git"
   AvailabilityZones:
     Type: String
-    Description: Comma Seperated list of Avaiability Availability Zones
-    Default: "us-east-1f,us-east-1e"
-
-Mappings:
-  AWSRegionToAMI:
-    us-east-2:
-      AMI: ami-0a0c6574ce16ce87a
-    us-east-1:
-      AMI: ami-07eb698ce660402d2
-    us-west-2:
-      AMI: ami-09568291a9d6c804c
-    us-west-1:
-      AMI: ami-04c22ba97a0c063c4
-    eu-west-3:
-      AMI: ami-0a0948de946510ec0
-    eu-west-2:
-      AMI: ami-0cb31bf24b130a0f9
-    eu-west-1:
-      AMI: ami-066826c6a40879d75
-    eu-central-1:
-      AMI: ami-0b9fee3a2d0596ed1
-    ap-northeast-2:
-      AMI: ami-0b52e57bed048ca48
-    ap-northeast-1:
-      AMI: ami-0edf19001c48838c7
-    ap-southeast-2:
-      AMI: ami-08c26730c8ee004fa
-    ap-southeast-1:
-      AMI: ami-08d4fe232c67b81b8
-    ca-central-1:
-      AMI: ami-055750f063052ec55
-    ap-south-1:
-      AMI: ami-05f009513cd58ac90
-    sa-east-1:
-      AMI: ami-0ada25501ac1375b3
-    us-gov-west-1:
-      AMI: ami-3c39a25d
-
+    Description: Comma seperated list of Availability Zones. e.g. us-east-1a,us-east-1b
+    Default: ""
+Conditions:
+  AvailabilityZoneListIsEmpty:
+    Fn::Equals:
+      - Ref: AvailabilityZones
+      - ""
 Resources:
   # VPC Setup
   VpcQuickstartStack:
@@ -56,7 +33,19 @@ Resources:
     Properties:
       TemplateURL: https://aws-quickstart.s3.amazonaws.com/quickstart-aws-vpc/templates/aws-vpc.template
       Parameters:
-        AvailabilityZones: !Ref AvailabilityZones
+        AvailabilityZones:
+          Fn::If:
+            - AvailabilityZoneListIsEmpty
+            - Fn::Join:
+                - ","
+                - 
+                  - Fn::Select:
+                      - 0
+                      - Fn::GetAZs: !Ref AWS::Region
+                  - Fn::Select:
+                      - 1
+                      - Fn::GetAZs: !Ref AWS::Region
+            - !Ref AvailabilityZones
         NumberOfAZs: 2
         CreatePrivateSubnets: 'true'
         VPCCIDR: "10.0.0.0/16"
@@ -73,9 +62,12 @@ Resources:
     Properties:
       Name: "ECS-Workshop"
       Description: "ECS Workshop Cloud9 Environment"
+      Repositories:
+        - PathComponent: "/deploy-manage-microservices-on-ecs-and-fargate"
+          RepositoryUrl: !Ref EcsWorkshopRepositoryUrl
       SubnetId: 
         Fn::GetAtt: VpcQuickstartStack.Outputs.PublicSubnet1ID
-      InstanceType: m4.large
+      InstanceType: !Ref Cloud9InstanceType
 
   # SQS Queue setup
   SqsQueue:
@@ -124,19 +116,6 @@ Resources:
                 Rules:
                   - Name: prefix
                     Value: "images/" 
-  ImageS3BucketPolicy:
-    Type: "AWS::S3::BucketPolicy"
-    Properties:
-      Bucket: !Ref ImageS3Bucket
-      PolicyDocument:
-        Statement:
-          - 
-            Action:
-              - "s3:GetObject"
-            Effect: "Allow"
-            Resource:
-              Fn::Join: ["", ["arn:aws:s3:::", !Ref ImageS3Bucket, "/*"]]
-            Principal: "*"
 
   # DynamoDB Tables
   UserProfileDdbTable:

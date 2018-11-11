@@ -1,5 +1,5 @@
 {
-    "family": "ecs-workshop--thumbnail-service",
+    "family": "ecs-workshop-thumbnail-service",
     "taskRoleArn": "<ThumbnailServiceTaskRoleArn>",
     "networkMode": "bridge",
     "requiresCompatibilities": ["EC2"],

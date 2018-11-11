@@ -108,7 +108,7 @@ module.exports = (app, config, partials) => {
                     last_name: data.Item.LastName.S,
                     email: data.Item.Email.S,
                     first_name: data.Item.FirstName.S,
-                    profileImg: 'https://s3.amazonaws.com/' + config.aws_user_img_bucket + '/thmb/images/' + data.Item.Profile_Img.S,
+                    profileImg: 'https://s3.dualstack.'+config.aws_region+'.amazonaws.com/' + config.aws_user_img_bucket + '/thmb/images/' + data.Item.Profile_Img.S,
                     credJson : credJson
                 }
                 req.session.save();

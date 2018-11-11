@@ -12,6 +12,7 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
 
 public class GenerateThumbnail {
 
@@ -33,7 +34,7 @@ public class GenerateThumbnail {
 			ObjectMetadata s3ObjectMetadata = new ObjectMetadata();
 			s3ObjectMetadata.setContentLength(thumnailData.length);
 			PutObjectRequest putobject = new PutObjectRequest(bucketName, path + filename, new ByteArrayInputStream(thumnailData), s3ObjectMetadata); 
-
+			putobject.setCannedAcl(CannedAccessControlList.PublicRead);
 			s3.putObject(putobject);
 
 		} catch (AmazonS3Exception e) {
