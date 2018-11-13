@@ -11,7 +11,7 @@ Parameters:
     Default: ecs-workshop-user-pool
   Cloud9InstanceType:
     Type: String
-    Default: m4.large
+    Default: t2.small
     Description: Cloud9 Instance Type
   EcsWorkshopRepositoryUrl:
     Type: String
