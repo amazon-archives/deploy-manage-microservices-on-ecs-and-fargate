@@ -138,6 +138,7 @@ aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/dmesg
 aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/docker
 aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/ecs/audit.log
 aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/ecs/ecs-agent.log
+aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/ecs/ecs-init.log
 aws logs delete-log-group --log-group-name ecs-workshop-cluster-/var/log/messages
 ```
 
